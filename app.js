@@ -244,8 +244,8 @@ function populateSettings() {
 
 function saveSettings(ev) {
   ev.preventDefault();
-  state.base = $("#cfg-base").value.trim().replace(/\/$/, "");
-  state.token = $("#cfg-token").value.trim();
+  state.base = $("#cfg-base").value.replace(/\s+/g, "").replace(/\/$/, "");
+  state.token = $("#cfg-token").value.replace(/\s+/g, "");
   state.pollSec = Math.max(10, Math.min(600, parseInt($("#cfg-poll").value, 10) || 30));
   localStorage.setItem(LS.base, state.base);
   localStorage.setItem(LS.token, state.token);
@@ -260,8 +260,8 @@ async function testConnection() {
   $("#cfg-result").textContent = "testing…";
   // apply current form values without persisting
   const prev = { base: state.base, token: state.token };
-  state.base = $("#cfg-base").value.trim().replace(/\/$/, "");
-  state.token = $("#cfg-token").value.trim();
+  state.base = $("#cfg-base").value.replace(/\s+/g, "").replace(/\/$/, "");
+  state.token = $("#cfg-token").value.replace(/\s+/g, "");
   try {
     const { peers } = await apiPeers();
     $("#cfg-result").textContent = `✓ ok — ${peers.length} peers (${peers.map(p => p.name).join(", ")})`;
