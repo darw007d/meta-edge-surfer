@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0d12" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Meta-Edge" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="styles.css" />
+  <title>Meta-Edge Surfer</title>
+</head>
+<body>
+  <header id="topbar">
+    <div class="brand">⌬ Meta-Edge</div>
+    <div class="status" id="status">…</div>
+  </header>
+
+  <nav id="tabs" role="tablist">
+    <button class="tab active" data-view="inbox" role="tab">Inbox</button>
+    <button class="tab" data-view="send" role="tab">Send</button>
+    <button class="tab" data-view="highlights" role="tab">48h</button>
+    <button class="tab" data-view="settings" role="tab">⚙︎</button>
+  </nav>
+
+  <main id="views">
+    <section id="view-inbox" class="view active">
+      <div class="toolbar">
+        <button id="refresh-inbox" class="btn-secondary">⟳ Refresh</button>
+        <span id="inbox-count" class="muted"></span>
+      </div>
+      <ul id="inbox-list" class="msg-list"></ul>
+      <div id="inbox-empty" class="empty hidden">No DMs yet.</div>
+    </section>
+
+    <section id="view-send" class="view">
+      <form id="send-form">
+        <label>
+          To
+          <select id="send-to" required></select>
+        </label>
+        <label>
+          Kind
+          <select id="send-kind" required>
+            <option value="fyi">fyi</option>
+            <option value="answer">answer</option>
+            <option value="question">question</option>
+            <option value="status">status</option>
+            <option value="unblock">unblock</option>
+          </select>
+        </label>
+        <label>
+          Content
+          <textarea id="send-content" rows="8" required maxlength="200000"
+                    placeholder="Type your message…"></textarea>
+        </label>
+        <button type="submit" id="send-btn" class="btn-primary">SEND</button>
+        <div id="send-result" class="muted"></div>
+      </form>
+    </section>
+
+    <section id="view-highlights" class="view">
+      <div class="toolbar">
+        <button id="refresh-highlights" class="btn-secondary">⟳ Refresh</button>
+        <span id="highlights-meta" class="muted"></span>
+      </div>
+      <div id="highlights-tree"></div>
+      <div id="highlights-empty" class="empty hidden">Nothing in the last 48h.</div>
+    </section>
+
+    <section id="view-settings" class="view">
+      <form id="settings-form">
+        <label>
+          Mesh-gateway base URL
+          <input id="cfg-base" type="url" placeholder="http://100.107.222.72:8788" required />
+        </label>
+        <label>
+          Commander bearer token
+          <input id="cfg-token" type="password" placeholder="paste token" autocomplete="off" required />
+        </label>
+        <label>
+          Inbox poll interval (s)
+          <input id="cfg-poll" type="number" min="10" max="600" value="30" />
+        </label>
+        <button type="submit" class="btn-primary">SAVE</button>
+        <button type="button" id="cfg-test" class="btn-secondary">Test connection</button>
+        <div id="cfg-result" class="muted"></div>
+      </form>
+      <div class="legal">
+        <p class="muted">
+          Token is stored in <code>localStorage</code>. Clearing site data
+          removes it. PWA hits <code>/peers</code>, <code>/messages</code> only.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <template id="tpl-msg">
+    <li class="msg">
+      <header class="msg-h">
+        <span class="msg-from"></span>
+        <span class="msg-arrow">→</span>
+        <span class="msg-to"></span>
+        <span class="msg-kind"></span>
+        <time class="msg-time"></time>
+      </header>
+      <div class="msg-body"></div>
+    </li>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>

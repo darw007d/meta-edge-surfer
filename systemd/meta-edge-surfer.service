@@ -1,0 +1,17 @@
+[Unit]
+Description=Meta-Edge Surfer — static PWA for commander mesh DMs
+After=network-online.target tailscaled.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/meta-edge-surfer
+ExecStart=/usr/bin/python3 -m http.server 8089 --bind 0.0.0.0
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:/home/ubuntu/meta-edge-surfer/logs/server.log
+StandardError=append:/home/ubuntu/meta-edge-surfer/logs/server.log
+
+[Install]
+WantedBy=multi-user.target
