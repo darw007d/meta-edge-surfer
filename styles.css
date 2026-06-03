@@ -160,6 +160,17 @@ textarea { resize: vertical; min-height: 120px; }
 .msg-kind.status   { color: var(--kind-status); }
 .msg-kind.unblock  { color: var(--kind-unblock); }
 .msg-time { font-variant-numeric: tabular-nums; }
+.msg-reply {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+.msg-reply:hover, .msg-reply:active { color: var(--accent); border-color: var(--accent); }
 .msg-body {
   white-space: pre-wrap;
   word-wrap: break-word;
