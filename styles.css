@@ -249,3 +249,18 @@ details.cat .cat-list .msg {
 
 .legal { margin-top: 24px; }
 .legal code { background: var(--panel-2); padding: 1px 5px; border-radius: 4px; }
+
+/* ---- Automations tab ---- */
+.automation-card { padding: .6rem .75rem; border-bottom: 1px solid var(--border, #2a2a35); }
+.automation-card.disabled { opacity: .55; }
+.auto-row { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.auto-name { font-weight: 600; }
+.auto-trigger { font-size: .85rem; margin-top: .2rem; }
+.auto-meta { font-size: .75rem; opacity: .7; margin-top: .15rem; }
+.auto-toggle {
+  border: 1px solid var(--border, #2a2a35); border-radius: 999px;
+  padding: .2rem .7rem; font-size: .75rem; cursor: pointer;
+  background: transparent; color: inherit;
+}
+.auto-toggle.on { background: var(--accent, #3a7); color: #fff; border-color: transparent; }
+.note { font-size: .72rem; opacity: .6; padding: .5rem .75rem; }
