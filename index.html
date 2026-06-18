@@ -23,6 +23,7 @@
     <button class="tab active" data-view="inbox" role="tab">Inbox</button>
     <button class="tab" data-view="send" role="tab">Send</button>
     <button class="tab" data-view="highlights" role="tab">48h</button>
+    <button class="tab" data-view="automations">Automations</button>
     <button class="tab" data-view="settings" role="tab">⚙︎</button>
   </nav>
 
@@ -71,6 +72,15 @@
       <div id="highlights-empty" class="empty hidden">Nothing in the last 48h.</div>
     </section>
 
+    <section id="view-automations" class="view">
+      <div class="view-head">
+        <span id="automations-count" class="count"></span>
+      </div>
+      <ul id="automations-list" class="msg-list"></ul>
+      <p id="automations-empty" class="empty hidden">No automations scheduled.</p>
+      <p class="note">Global scheduler arm/disarm (SCHEDULER_ENABLED) is managed via CLI — this panel shows + pauses individual automations.</p>
+    </section>
+
     <section id="view-settings" class="view">
       <form id="settings-form">
         <label>
@@ -109,6 +119,17 @@
         <button class="msg-reply" type="button" aria-label="Reply" title="Reply">↩ Reply</button>
       </header>
       <div class="msg-body"></div>
+    </li>
+  </template>
+
+  <template id="tpl-automation">
+    <li class="automation-card">
+      <div class="auto-row">
+        <span class="auto-name"></span>
+        <button class="auto-toggle"></button>
+      </div>
+      <div class="auto-trigger"></div>
+      <div class="auto-meta"></div>
     </li>
   </template>
 
