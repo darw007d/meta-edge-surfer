@@ -274,3 +274,11 @@ details.cat .cat-list .msg {
 .svc-meta { font-size: .75rem; opacity: .7; margin-top: .15rem; }
 .svc-controls { display: flex; gap: .4rem; margin-top: .4rem; flex-wrap: wrap; }
 .svc-controls button, .svc-model { font-size: .85rem; }
+
+/* ---- Launched lanes ---- */
+.lanes-head { display: flex; justify-content: space-between; align-items: center; margin: .6rem .8rem .2rem; }
+.lane-ctrls { display: inline-flex; gap: .4rem; align-items: center; }
+.lane-n { width: 3em; }
+.lane-ctrls button, .lane-n { font-size: .85rem; }
+#new-lane-form { display: flex; flex-wrap: wrap; gap: .4rem; padding: .6rem .8rem; }
+#new-lane-form input, #new-lane-form select { font-size: .85rem; }
