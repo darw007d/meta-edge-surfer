@@ -24,6 +24,7 @@
     <button class="tab" data-view="send" role="tab">Send</button>
     <button class="tab" data-view="highlights" role="tab">48h</button>
     <button class="tab" data-view="automations" role="tab">Automations</button>
+    <button class="tab" data-view="services" role="tab">Services</button>
     <button class="tab" data-view="settings" role="tab">⚙︎</button>
   </nav>
 
@@ -81,6 +82,15 @@
       <p class="note">Global scheduler arm/disarm (SCHEDULER_ENABLED) is managed via CLI — this panel shows + pauses individual automations.</p>
     </section>
 
+    <section id="view-services" class="view">
+      <div class="toolbar">
+        <button id="refresh-services" class="btn-secondary">⟳ Refresh</button>
+        <span id="services-meta" class="muted"></span>
+      </div>
+      <ul id="services-list" class="msg-list"></ul>
+      <p class="note">Control acts on lab-ovh via the gateway (commander-gated). Stop/restart disrupts a serving lane.</p>
+    </section>
+
     <section id="view-settings" class="view">
       <form id="settings-form">
         <label>
@@ -130,6 +140,22 @@
       </div>
       <div class="auto-trigger"></div>
       <div class="auto-meta"></div>
+    </li>
+  </template>
+
+  <template id="tpl-service">
+    <li class="service-card">
+      <div class="svc-row">
+        <span class="svc-name"></span>
+        <span class="svc-state"></span>
+      </div>
+      <div class="svc-meta"></div>
+      <div class="svc-controls">
+        <select class="svc-model"></select>
+        <button class="svc-start" type="button">▶ start</button>
+        <button class="svc-stop" type="button">⏻ stop</button>
+        <button class="svc-restart" type="button">↻ restart</button>
+      </div>
     </li>
   </template>
 
