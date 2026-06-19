@@ -264,3 +264,13 @@ details.cat .cat-list .msg {
 }
 .auto-toggle.on { background: var(--accent, #3a7); color: #fff; border-color: transparent; }
 .note { font-size: .72rem; opacity: .6; padding: .5rem .75rem; }
+
+/* ---- Services tab (LLM fleet) ---- */
+.service-card { padding: .6rem .8rem; border-bottom: 1px solid var(--border, #2a2a35); }
+.svc-row { display: flex; justify-content: space-between; align-items: center; }
+.svc-name { font-weight: 600; }
+.svc-state.on { color: #3fb950; }
+.svc-state.off { color: #8b949e; }
+.svc-meta { font-size: .75rem; opacity: .7; margin-top: .15rem; }
+.svc-controls { display: flex; gap: .4rem; margin-top: .4rem; flex-wrap: wrap; }
+.svc-controls button, .svc-model { font-size: .85rem; }
