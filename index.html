@@ -89,6 +89,25 @@
       </div>
       <ul id="services-list" class="msg-list"></ul>
       <p class="note">Control acts on lab-ovh via the gateway (commander-gated). Stop/restart disrupts a serving lane.</p>
+
+      <div class="lanes-head">
+        <strong>Launched lanes</strong>
+        <button id="new-lane-btn" class="btn-secondary" type="button">+ New Lane</button>
+      </div>
+      <ul id="lanes-list" class="msg-list"></ul>
+      <form id="new-lane-form" class="hidden">
+        <select id="nl-provider">
+          <option value="gemini">gemini</option>
+          <option value="grok">grok</option>
+          <option value="gpt">gpt</option>
+          <option value="claude">claude</option>
+        </select>
+        <input id="nl-model" placeholder="model (e.g. gemini-2.5-pro)" />
+        <input id="nl-name" placeholder="lane name (a-z0-9-)" />
+        <input id="nl-n" type="number" min="0" max="8" value="1" />
+        <button type="submit" class="btn-primary">Launch</button>
+      </form>
+      <p class="note">A lane mints N provider workers that pull from the gateway task-queue. Delete stops all of a lane's workers.</p>
     </section>
 
     <section id="view-settings" class="view">
