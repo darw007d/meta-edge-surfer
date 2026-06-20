@@ -281,4 +281,11 @@ details.cat .cat-list .msg {
 .lane-n { width: 3em; }
 .lane-ctrls button, .lane-n { font-size: .85rem; }
 #new-lane-form { display: flex; flex-wrap: wrap; gap: .4rem; padding: .6rem .8rem; }
-#new-lane-form input, #new-lane-form select { font-size: .85rem; }
+#new-lane-form input, #new-lane-form select, #new-lane-form textarea { font-size: .85rem; }
+#nl-context { width: 100%; min-height: 4rem; font-family: inherit; }
+.ctx-editor { margin: 0.4rem 0 0; display: flex; flex-direction: column; gap: 0.3rem; padding: .4rem .8rem; }
+.ctx-editor.hidden { display: none; }
+.ctx-text { width: 100%; min-height: 5rem; font-family: inherit; box-sizing: border-box; }
+.ctx-file { display: block; font-size: .85rem; }
+.ctx-save { align-self: flex-start; font-size: .85rem; }
+.lane-ctx { /* inherits .lane-ctrls button sizing */ }
