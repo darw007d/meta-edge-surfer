@@ -113,10 +113,13 @@ async function trySsoBoot() {
   try {
     const me = await fetch("/auth/me", { credentials: "include" });
     if (!me.ok) return false;
-    if (!(await me.json()).authenticated) return false;
+    const info = await me.json();
+    if (!info.authenticated) return false;
     const tok = await ssoIdentityToken();
     if (!tok) return false;
     state.token = tok;        // in memory only — never localStorage
+    state.ssoLogin = info.login || "";
+    state.ssoProvider = info.provider || "";
     ssoActive = true;
     return true;
   } catch { return false; }
@@ -125,6 +128,31 @@ async function ssoLogout() {
   try { await fetch("/auth/logout", { method: "POST", credentials: "include" }); } catch {}
   ssoActive = false;
   state.token = "";
+}
+
+// Settings reflects the connection: when signed in via SSO, show "Connected as X"
+// + Sign out and hide the sign-in buttons; otherwise show the buttons.
+function renderAuthState() {
+  const status = $("#sso-status");
+  const block = document.querySelector(".sso-block");
+  if (!status) return;
+  if (ssoActive) {
+    const esc = (s) => String(s).replace(/[&<>"]/g,
+      (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    const who = esc(state.ssoLogin || "you");
+    const prov = (state.ssoProvider || "sso");
+    const provLabel = esc(prov.charAt(0).toUpperCase() + prov.slice(1));
+    status.innerHTML =
+      `<div class="sso-connected">✓ Connected as <b>${who}</b> · ${provLabel}` +
+      ` <button id="sso-logout" type="button" class="btn-secondary">Sign out</button></div>`;
+    status.classList.remove("hidden");
+    if (block) block.classList.add("hidden");
+    const lo = $("#sso-logout");
+    if (lo) lo.addEventListener("click", async () => { await ssoLogout(); location.reload(); });
+  } else {
+    status.classList.add("hidden");
+    if (block) block.classList.remove("hidden");
+  }
 }
 const apiPeers = () => api("/peers");
 const apiInbox = (limit = 50) =>
@@ -695,6 +723,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     showView("inbox");
     startPollLoop();
   }
+  renderAuthState();   // reflect SSO connected-state in Settings
 
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("sw.js").catch(() => { /* HTTPS-only on some browsers */ });

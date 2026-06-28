@@ -301,3 +301,11 @@ details.cat .cat-list .msg {
 .btn-sso:hover { background: #111827; }
 .sso-rec { font-size: .72rem; font-weight: 700; color: #34d399; margin-left: .35rem; }
 .sso-or { text-align: center; color: #8a8f98; font-size: .8rem; margin: .25rem 0 0; }
+
+/* ---- SSO connected state (Settings) ---- */
+.sso-connected {
+  display: flex; align-items: center; gap: .6rem; flex-wrap: wrap;
+  padding: .7rem 1rem; border-radius: 8px; margin-bottom: 1rem;
+  background: #0f2a1d; border: 1px solid #1f7a4d; color: #d1fae5; font-weight: 600;
+}
+.sso-connected button { margin-left: auto; }
