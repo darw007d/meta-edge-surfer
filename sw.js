@@ -4,7 +4,7 @@
 // v1 ships rapidly. Network-only with a tiny same-origin runtime cache for
 // static assets is good enough.
 
-const STATIC_CACHE = "mes-static-v4";
+const STATIC_CACHE = "mes-static-v5";
 const STATIC_ASSETS = [
   "./",
   "./index.html",
@@ -38,7 +38,7 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   // NEVER cache the auth backend (same-origin in prod): a cached /auth/me or
   // /auth/identity-token would serve a stale/expired gateway-trusted bearer.
-  if (url.pathname.startsWith("/auth/")) return;
+  if (url.pathname.startsWith("/auth/") || url.pathname.startsWith("/gw/")) return;
   event.respondWith(
     caches.match(event.request).then((cached) => cached || fetch(event.request))
   );
