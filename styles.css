@@ -289,3 +289,15 @@ details.cat .cat-list .msg {
 .ctx-file { display: block; font-size: .85rem; }
 .ctx-save { align-self: flex-start; font-size: .85rem; }
 .lane-ctx { /* inherits .lane-ctrls button sizing */ }
+
+/* ---- Meta-Edge SSO sign-in (Settings) ---- */
+.sso-block { margin-bottom: 1rem; display: flex; flex-direction: column; gap: .5rem; }
+.sso-label { margin: 0 0 .25rem; font-weight: 600; }
+.btn-sso {
+  display: block; text-align: center; padding: .7rem 1rem; border-radius: 8px;
+  background: #1f2937; color: #fff; text-decoration: none; font-weight: 600;
+  border: 1px solid #374151;
+}
+.btn-sso:hover { background: #111827; }
+.sso-rec { font-size: .72rem; font-weight: 700; color: #34d399; margin-left: .35rem; }
+.sso-or { text-align: center; color: #8a8f98; font-size: .8rem; margin: .25rem 0 0; }
