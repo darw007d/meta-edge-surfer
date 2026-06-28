@@ -146,12 +146,16 @@ function renderAuthState() {
       `<div class="sso-connected">✓ Connected as <b>${who}</b> · ${provLabel}` +
       ` <button id="sso-logout" type="button" class="btn-secondary">Sign out</button></div>`;
     status.classList.remove("hidden");
-    if (block) block.classList.add("hidden");
+    if (block) block.style.display = "none";   // beat .sso-block's display:flex
+    const tl = document.querySelector("#cfg-token")?.closest("label");
+    if (tl) tl.style.display = "none";          // hide the manual token field on SSO
     const lo = $("#sso-logout");
     if (lo) lo.addEventListener("click", async () => { await ssoLogout(); location.reload(); });
   } else {
     status.classList.add("hidden");
-    if (block) block.classList.remove("hidden");
+    if (block) block.style.display = "";
+    const tl = document.querySelector("#cfg-token")?.closest("label");
+    if (tl) tl.style.display = "";
   }
 }
 const apiPeers = () => api("/peers");
