@@ -253,6 +253,7 @@ function renderAuthState() {
     if (tl) tl.style.display = "";
   }
   renderInviteUi();
+  renderOperatorTabs();
 }
 
 // Show the "Invite a member" control ONLY for an admin SSO session. Server-side
@@ -263,6 +264,24 @@ function renderInviteUi() {
   if (!adm) return;
   const isAdmin = ssoActive && state.ssoRole === "admin";
   adm.classList.toggle("hidden", !isAdmin);
+}
+
+// Operator-only tabs (Automations, Services) drive control-plane endpoints that
+// 403 for a member server-side (the gateway _is_operator gate). Hide them for
+// non-admin sessions so a member isn't shown controls they can't use. Purely UX —
+// the gateway remains the real boundary. If a non-admin is somehow ON a now-hidden
+// view, fall back to Inbox so they're never stranded on a blank/forbidden tab.
+const OPERATOR_TABS = ["automations", "services"];
+function renderOperatorTabs() {
+  const isAdmin = ssoActive && state.ssoRole === "admin";
+  OPERATOR_TABS.forEach((v) => {
+    const tab = document.querySelector(`.tab[data-view="${v}"]`);
+    if (tab) tab.classList.toggle("hidden", !isAdmin);
+  });
+  if (!isAdmin) {
+    const activeTab = document.querySelector(".tab.active");
+    if (activeTab && OPERATOR_TABS.includes(activeTab.dataset.view)) showView("inbox");
+  }
 }
 
 // Render the "you've been invited" prompt for an unauthenticated landing.
