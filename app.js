@@ -16,8 +16,13 @@ const DEFAULT_BASE = location.protocol === "https:"
   ? `${location.origin}/gw`
   : `${location.protocol}//${location.hostname}:8788`;
 const COMMANDER = "commander";
-const AI_PEERS = ["droplet", "lab-ovh", "gpu-wsl", "razorpeter", "science-claude"];
 const KIND_LABELS = ["fyi", "answer", "question", "status", "unblock"];
+
+// The node this session acts as. When signed in via Meta-Edge SSO it is the
+// logged-in member's own canonical node (state.ssoNode, e.g. "claire-mbp#0001");
+// otherwise (manual shared/root token in Settings) it degrades to the legacy
+// "commander" literal so the commander's shared-token use stays byte-identical.
+function selfNode() { return state.ssoNode || COMMANDER; }
 
 // ---------- state ----------
 const state = {
@@ -120,6 +125,8 @@ async function trySsoBoot() {
     state.token = tok;        // in memory only — never localStorage
     state.ssoLogin = info.login || "";
     state.ssoProvider = info.provider || "";
+    state.ssoNode = info.node || "";            // canonical node = from_node for all posts
+    state.ssoDisplay = info.display_name || ""; // cosmetic only — zero access effect
     ssoActive = true;
     return true;
   } catch { return false; }
@@ -160,12 +167,15 @@ function renderAuthState() {
 }
 const apiPeers = () => api("/peers");
 const apiInbox = (limit = 50) =>
-  api(`/messages?to=${COMMANDER}&limit=${limit}`);
+  api(`/messages?to=${encodeURIComponent(selfNode())}&limit=${limit}`);
 const apiAll = (limit = 200) => api(`/messages?limit=${limit}`);
-const apiSend = (to_node, kind, content) =>
+const apiSend = (to_node, kind, content, cc) =>
   api("/messages", {
     method: "POST",
-    body: JSON.stringify({ from_node: COMMANDER, to_node, kind, content }),
+    body: JSON.stringify(
+      cc && cc.length
+        ? { from_node: selfNode(), to_node, kind, content, cc }
+        : { from_node: selfNode(), to_node, kind, content }),
   });
 const apiSchedEvents = () => api("/scheduled-events");
 const apiSchedToggle = (name, enable) =>
@@ -239,6 +249,14 @@ function renderMessages(rootList, msgs) {
     kind.classList.add(m.kind);
     li.querySelector(".msg-time").textContent = fmtTime(m.created_at);
     li.querySelector(".msg-time").title = m.created_at;
+    // cc line: server sends a JSON array of cc'd nodes (or null). Render only
+    // when present so legacy un-cc'd DMs are byte-identical.
+    const ccEl = li.querySelector(".msg-cc");
+    if (ccEl) {
+      const cc = Array.isArray(m.cc) ? m.cc : [];
+      if (cc.length) ccEl.textContent = "cc: " + cc.join(", ");
+      else ccEl.remove();
+    }
     const body = li.querySelector(".msg-body");
     body.innerHTML = renderContent(m.content);
     if (state.expanded.has(m.id)) body.classList.add("expanded");
@@ -252,7 +270,7 @@ function renderMessages(rootList, msgs) {
     // Reply: jump to Send pre-filled to answer this sender. Hidden on your own
     // messages (you don't reply to yourself).
     const replyBtn = li.querySelector(".msg-reply");
-    if (m.from_node === COMMANDER) {
+    if (m.from_node === selfNode()) {
       replyBtn.remove();
     } else {
       replyBtn.addEventListener("click", (ev) => {
@@ -537,25 +555,16 @@ async function populatePeers() {
     state.peers = peers;
     sel.innerHTML = "";
     for (const p of peers) {
-      if (p.name === COMMANDER) continue;
+      if (p.name === selfNode()) continue;
       const opt = document.createElement("option");
       opt.value = p.name;
       opt.textContent = p.name;
       sel.appendChild(opt);
     }
-    if (sel.options.length === 0) {
-      // fall back to hardcoded list if /peers somehow returns empty
-      for (const n of AI_PEERS) {
-        const opt = document.createElement("option");
-        opt.value = n; opt.textContent = n; sel.appendChild(opt);
-      }
-    }
+    // No hardcoded fallback: /peers is grant-filtered server-side, so any static
+    // list would leak ungranted cells. An empty dropdown means "no granted cells".
   } catch (e) {
     setStatus("peers err: " + e.message, "err");
-    for (const n of AI_PEERS) {
-      const opt = document.createElement("option");
-      opt.value = n; opt.textContent = n; sel.appendChild(opt);
-    }
   }
 }
 
@@ -564,14 +573,19 @@ async function handleSend(ev) {
   const to_node = $("#send-to").value;
   const kind = $("#send-kind").value;
   const content = $("#send-content").value.trim();
+  const ccField = $("#send-cc");
+  const cc = ccField
+    ? ccField.value.split(",").map(s => s.trim()).filter(Boolean)
+    : [];
   if (!content) return;
   const btn = $("#send-btn");
   btn.disabled = true;
   $("#send-result").textContent = "sending…";
   try {
-    const r = await apiSend(to_node, kind, content);
+    const r = await apiSend(to_node, kind, content, cc);
     $("#send-result").textContent = `✓ id=${r.id} sent at ${fmtTime(r.created_at)}`;
     $("#send-content").value = "";
+    if (ccField) ccField.value = "";
   } catch (e) {
     $("#send-result").textContent = "✗ " + e.message;
   } finally {

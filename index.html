@@ -55,6 +55,11 @@
           </select>
         </label>
         <label>
+          cc <span class="muted">(optional, comma-separated)</span>
+          <input id="send-cc" type="text" autocomplete="off"
+                 placeholder="cellA, commander" />
+        </label>
+        <label>
           Content
           <textarea id="send-content" rows="8" required maxlength="200000"
                     placeholder="Type your message…"></textarea>
@@ -156,6 +161,7 @@
         <time class="msg-time"></time>
         <button class="msg-reply" type="button" aria-label="Reply" title="Reply">↩ Reply</button>
       </header>
+      <div class="msg-cc"></div>
       <div class="msg-body"></div>
     </li>
   </template>
