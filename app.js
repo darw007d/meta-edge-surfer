@@ -173,7 +173,14 @@ async function ssoClaimInvite(token) {
     body: JSON.stringify({ invite: token }),
   });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.detail || `${r.status}`);
+  if (!r.ok) {
+    // Carry the HTTP status on the error so the caller can distinguish a
+    // terminal 4xx (drop the invite) from a transient 5xx (keep it) WITHOUT
+    // string-matching e.message — the body's `detail` masks the status code.
+    const err = new Error(j.detail || `${r.status}`);
+    err.status = r.status;
+    throw err;
+  }
   return j;   // { claimed, node, role, cells }
 }
 
@@ -851,8 +858,10 @@ async function claimPendingInvite() {
     setStatus(`invite accepted · node ${j.node}`, "ok");
   } catch (e) {
     // A 5xx (gateway hiccup) leaves the invite claimable on the next boot; a 4xx
-    // (used/expired/wrong account) is terminal — drop it so we don't loop.
-    if (!/^5\d\d/.test(e.message)) localStorage.removeItem(LS.pendingInvite);
+    // (used/expired/wrong account) is terminal — drop it so we don't loop. Use
+    // the status carried on the error (e.status); a body `detail` would otherwise
+    // hide the code (e.g. a 502 "could not provision membership; try again").
+    if (!(e.status >= 500 && e.status <= 599)) localStorage.removeItem(LS.pendingInvite);
     setStatus("invite: " + e.message, "err");
   }
 }
