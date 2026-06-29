@@ -847,7 +847,9 @@ async function handleCreateInvite(ev) {
   result.textContent = "creating…";
   try {
     const j = await ssoCreateInvite(email, cells, role);
-    result.textContent = `✓ invite created for ${j.email}`;
+    result.textContent = j.emailed
+      ? `✓ invite emailed to ${j.email} — link also below as a fallback`
+      : `✓ invite created for ${j.email} — copy the link below and send it`;
     const wrap = $("#inv-link-wrap"), link = $("#inv-link"), copy = $("#inv-copy");
     if (link) link.value = j.link || "";
     if (wrap) wrap.classList.remove("hidden");
