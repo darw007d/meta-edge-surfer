@@ -158,19 +158,28 @@ async function ssoCreateInvite(email, cells, role) {
   if (!r.ok) throw new Error(j.detail || `${r.status}`);
   return j;   // { invite, link, email, cells, role, expires_in }
 }
-async function ssoInviteInfo(token) {
+// A signed JWT has two dots (header.payload.sig); an opaque handle (token_urlsafe)
+// has none. New links carry a handle; a legacy ?invite=<jwt> link is still honored.
+// (Inlined per-function so each stays self-contained.)
+async function ssoInviteInfo(val) {
   try {
-    const r = await fetch(`/auth/invite/info?invite=${encodeURIComponent(token)}`,
-                          { credentials: "include" });
+    // F7: the browser holds only the opaque handle; the issuer resolves it to the
+    // signed JWT server-side. No JWT ever rides in a URL (history/Referer-safe).
+    const isJwt = (val.match(/\./g) || []).length === 2;
+    const q = isJwt ? `invite=${encodeURIComponent(val)}`
+                    : `h=${encodeURIComponent(val)}`;
+    const r = await fetch(`/auth/invite/info?${q}`, { credentials: "include" });
     if (!r.ok) return null;
     return await r.json();   // { email, cells, role, fractal }
   } catch { return null; }
 }
-async function ssoClaimInvite(token) {
+async function ssoClaimInvite(val) {
+  // opaque handle (resolved server-side) | legacy raw JWT in the POST body.
+  const isJwt = (val.match(/\./g) || []).length === 2;
   const r = await fetch("/auth/invite/claim", {
     method: "POST", credentials: "include",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ invite: token }),
+    body: JSON.stringify(isJwt ? { invite: val } : { handle: val }),
   });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) {
@@ -184,17 +193,36 @@ async function ssoClaimInvite(token) {
   return j;   // { claimed, node, role, cells }
 }
 
-// Capture an invite token from the landing URL (/join?invite=… or ?invite=…) and
-// persist it so it survives the SSO redirect round-trip (which returns to "/").
-// Strips it from the address bar so a manual refresh doesn't re-trigger.
+// Capture an invite HANDLE from the landing URL (/join?h=… ) and persist it so it
+// survives the SSO redirect round-trip (which returns to "/"). F7: the link carries
+// an opaque handle, not the signed JWT; the issuer resolves it server-side. A legacy
+// ?invite=<jwt> link is still honored as a fallback. Strips it from the address bar
+// so a manual refresh doesn't re-trigger.
 function captureInviteFromUrl() {
   const params = new URLSearchParams(location.search);
-  const tok = params.get("invite");
+  const tok = params.get("h") || params.get("invite");
   if (tok) {
     localStorage.setItem(LS.pendingInvite, tok);
     const clean = location.pathname.replace(/\/join$/, "/") || "/";
     history.replaceState(null, "", clean);
   }
+}
+
+// A brand-new (not-yet-allowlisted) invitee is authorized by the invite ITSELF, so
+// the invite must ride THROUGH the SSO start: the issuer stashes it server-side and
+// claims it inline on the callback (otherwise the un-allowlisted login is a 403
+// before any client-side claim can run). Point each sign-in button at
+// /auth/<provider>/start?h=<handle> (or ?invite=<jwt> for a legacy value) so the
+// canonical /join link actually onboards a new member. Returns true if wired.
+function wireInviteIntoSignIn(val) {
+  const isJwt = (val.match(/\./g) || []).length === 2;
+  const q = isJwt ? `invite=${encodeURIComponent(val)}` : `h=${encodeURIComponent(val)}`;
+  let wired = false;
+  document.querySelectorAll("a.btn-sso").forEach((a) => {
+    const base = (a.getAttribute("href") || "").split("?")[0];
+    if (base) { a.setAttribute("href", `${base}?${q}`); wired = true; }
+  });
+  return wired;
 }
 
 // Settings reflects the connection: when signed in via SSO, show "Connected as X"
@@ -904,9 +932,14 @@ window.addEventListener("DOMContentLoaded", async () => {
     showView("inbox");
     startPollLoop();
   } else if (pendingInvite && !ssoActive) {
-    // Invited but not signed in → show the join prompt + sign-in buttons.
+    // Invited but not signed in → show the join prompt and carry the invite THROUGH
+    // the SSO start so the issuer claims it inline (a new member is authorized by
+    // the invite, not a pre-existing allowlist — without this the login 403s). The
+    // server now owns the claim, so drop the localStorage copy to avoid a redundant
+    // double-claim on the post-login boot.
     showView("settings");
     await showJoinPrompt(pendingInvite);
+    if (wireInviteIntoSignIn(pendingInvite)) localStorage.removeItem(LS.pendingInvite);
     setStatus("sign in to accept your invite — Settings", "err");
   } else if (!state.token) {
     showView("settings");

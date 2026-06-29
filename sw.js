@@ -4,7 +4,7 @@
 // v1 ships rapidly. Network-only with a tiny same-origin runtime cache for
 // static assets is good enough.
 
-const STATIC_CACHE = "mes-static-v9";
+const STATIC_CACHE = "mes-static-v10";
 const STATIC_ASSETS = [
   "./",
   "./index.html",
