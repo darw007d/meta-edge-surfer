@@ -8,6 +8,7 @@ const LS = {
   token: "mes.token",
   poll: "mes.poll",
   expanded: "mes.expanded",  // session set of expanded msg ids
+  pendingInvite: "mes.pendingInvite",  // invite token surviving the SSO round-trip
 };
 
 // On a public HTTPS front the gateway is reached same-origin via the /gw relay
@@ -131,6 +132,9 @@ async function trySsoBoot() {
     state.ssoProvider = info.provider || "";
     state.ssoNode = info.node || "";            // canonical node = from_node for all posts
     state.ssoDisplay = info.display_name || ""; // cosmetic only — zero access effect
+    state.ssoRole = info.role || "member";      // advisory — gates SHOWING the admin
+                                                // Invite control only; the issuer
+                                                // re-checks admin server-side (INV3).
     ssoActive = true;
     return true;
   } catch { return false; }
@@ -139,6 +143,51 @@ async function ssoLogout() {
   try { await fetch("/auth/logout", { method: "POST", credentials: "include" }); } catch {}
   ssoActive = false;
   state.token = "";
+}
+
+// ---------- invites (issuer /auth/invite*) ----------
+// All invite calls go to the same-origin auth backend (cookie session), NOT the
+// gateway. Admin-only mint + non-consuming preview + the post-SSO claim.
+async function ssoCreateInvite(email, cells, role) {
+  const r = await fetch("/auth/invite", {
+    method: "POST", credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, cells, role }),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.detail || `${r.status}`);
+  return j;   // { invite, link, email, cells, role, expires_in }
+}
+async function ssoInviteInfo(token) {
+  try {
+    const r = await fetch(`/auth/invite/info?invite=${encodeURIComponent(token)}`,
+                          { credentials: "include" });
+    if (!r.ok) return null;
+    return await r.json();   // { email, cells, role, fractal }
+  } catch { return null; }
+}
+async function ssoClaimInvite(token) {
+  const r = await fetch("/auth/invite/claim", {
+    method: "POST", credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ invite: token }),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.detail || `${r.status}`);
+  return j;   // { claimed, node, role, cells }
+}
+
+// Capture an invite token from the landing URL (/join?invite=… or ?invite=…) and
+// persist it so it survives the SSO redirect round-trip (which returns to "/").
+// Strips it from the address bar so a manual refresh doesn't re-trigger.
+function captureInviteFromUrl() {
+  const params = new URLSearchParams(location.search);
+  const tok = params.get("invite");
+  if (tok) {
+    localStorage.setItem(LS.pendingInvite, tok);
+    const clean = location.pathname.replace(/\/join$/, "/") || "/";
+    history.replaceState(null, "", clean);
+  }
 }
 
 // Settings reflects the connection: when signed in via SSO, show "Connected as X"
@@ -167,6 +216,33 @@ function renderAuthState() {
     if (block) block.style.display = "";
     const tl = document.querySelector("#cfg-token")?.closest("label");
     if (tl) tl.style.display = "";
+  }
+  renderInviteUi();
+}
+
+// Show the "Invite a member" control ONLY for an admin SSO session. Server-side
+// the issuer re-verifies admin on every mint (INV3), so hiding this is purely UX —
+// a tampered client that POSTs /auth/invite as a member still gets 403.
+function renderInviteUi() {
+  const adm = $("#admin-invite");
+  if (!adm) return;
+  const isAdmin = ssoActive && state.ssoRole === "admin";
+  adm.classList.toggle("hidden", !isAdmin);
+}
+
+// Render the "you've been invited" prompt for an unauthenticated landing.
+async function showJoinPrompt(token) {
+  const blk = $("#join-block");
+  if (!blk) return;
+  blk.classList.remove("hidden");
+  const info = await ssoInviteInfo(token);
+  const el = $("#join-info");
+  if (el) {
+    el.textContent = info && info.email
+      ? `Invited as ${info.email}` +
+        (Array.isArray(info.cells) && info.cells.length
+          ? ` · cells: ${info.cells.join(", ")}` : "")
+      : "Sign in with the invited account to accept.";
   }
 }
 const apiPeers = () => api("/peers");
@@ -725,6 +801,62 @@ async function testConnection() {
   }
 }
 
+// ---------- invite handlers ----------
+async function handleCreateInvite(ev) {
+  ev.preventDefault();
+  const email = $("#inv-email").value.trim();
+  const cells = $("#inv-cells").value.split(",").map(s => s.trim()).filter(Boolean);
+  const role = $("#inv-role").value;
+  const result = $("#inv-result");
+  if (!email) { result.textContent = "✗ email required"; return; }
+  result.textContent = "creating…";
+  try {
+    const j = await ssoCreateInvite(email, cells, role);
+    result.textContent = `✓ invite created for ${j.email}`;
+    const wrap = $("#inv-link-wrap"), link = $("#inv-link"), copy = $("#inv-copy");
+    if (link) link.value = j.link || "";
+    if (wrap) wrap.classList.remove("hidden");
+    if (copy) copy.classList.remove("hidden");
+    $("#invite-form").reset();
+  } catch (e) {
+    result.textContent = "✗ " + e.message;
+  }
+}
+
+async function copyInviteLink() {
+  const link = $("#inv-link");
+  if (!link || !link.value) return;
+  try {
+    await navigator.clipboard.writeText(link.value);
+    $("#inv-copy").textContent = "Copied ✓";
+    setTimeout(() => { $("#inv-copy").textContent = "Copy link"; }, 1500);
+  } catch {
+    link.select();   // clipboard API unavailable (http/older browser) — select for manual copy
+  }
+}
+
+// Post-SSO: if a pending invite is held, claim it once the session is live. On
+// success the gateway membership is provisioned and the member can act as its
+// node. Clears the pending token whether the claim succeeds or is permanently
+// rejected (4xx) so a dead/forwarded link doesn't loop; a transient 5xx is kept.
+async function claimPendingInvite() {
+  const tok = localStorage.getItem(LS.pendingInvite);
+  if (!tok || !ssoActive) return;
+  setStatus("accepting invite…");
+  try {
+    const j = await ssoClaimInvite(tok);
+    localStorage.removeItem(LS.pendingInvite);
+    state.ssoNode = j.node || state.ssoNode;
+    state.ssoRole = j.role || state.ssoRole;
+    setStatus(`invite accepted · node ${j.node}`, "ok");
+  } catch (e) {
+    // A 5xx (gateway hiccup) leaves the invite claimable on the next boot; a 4xx
+    // (used/expired/wrong account) is terminal — drop it so we don't loop.
+    if (!/^5\d\d/.test(e.message)) localStorage.removeItem(LS.pendingInvite);
+    setStatus("invite: " + e.message, "err");
+  }
+}
+
 // ---------- poll loop ----------
 function startPollLoop() {
   if (state.pollTimer) clearInterval(state.pollTimer);
@@ -746,10 +878,28 @@ window.addEventListener("DOMContentLoaded", async () => {
   $("#send-form").addEventListener("submit", handleSend);
   $("#settings-form").addEventListener("submit", saveSettings);
   $("#cfg-test").addEventListener("click", testConnection);
+  $("#invite-form")?.addEventListener("submit", handleCreateInvite);
+  $("#inv-copy")?.addEventListener("click", copyInviteLink);
+
+  // Capture an invite landing (/join?invite=…) BEFORE any SSO redirect so the
+  // token survives the round-trip.
+  captureInviteFromUrl();
+  const pendingInvite = localStorage.getItem(LS.pendingInvite);
 
   // Prefer a Meta-Edge SSO session; fall back to a manually-pasted token.
   if (!state.token) await trySsoBoot();
-  if (!state.token) {
+
+  if (ssoActive && pendingInvite) {
+    // Already signed in with a pending invite → claim it, then land on inbox.
+    await claimPendingInvite();
+    showView("inbox");
+    startPollLoop();
+  } else if (pendingInvite && !ssoActive) {
+    // Invited but not signed in → show the join prompt + sign-in buttons.
+    showView("settings");
+    await showJoinPrompt(pendingInvite);
+    setStatus("sign in to accept your invite — Settings", "err");
+  } else if (!state.token) {
     showView("settings");
     setStatus("sign in or paste a token — Settings", "err");
   } else {

@@ -30,11 +30,13 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import signal
 import socket
 import sys
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import urlparse
 
 log = logging.getLogger("meta-edge-surfer")
 
@@ -60,6 +62,30 @@ class HardenedHandler(SimpleHTTPRequestHandler):
     """
 
     server_version = "MetaEdgeSurfer/1.0"
+
+    def _spa_rewrite(self) -> None:
+        """SPA fallback: a client-routed navigation (e.g. ``/join?invite=…``) maps
+        to ``index.html`` so the app boots and reads the invite from the address
+        bar. Only EXTENSIONLESS paths that don't map to a real file are rewritten —
+        a missing asset (``/foo.png``) still 404s, and the query string is left on
+        the browser URL untouched (the server only swaps which file it serves).
+        In production nginx does this fallback; this keeps the static dev server
+        and the live front behaving the same."""
+        path = urlparse(self.path).path
+        last = path.rsplit("/", 1)[-1]
+        if "." in last:
+            return  # looks like a concrete asset — leave 404 behavior intact
+        candidate = self.translate_path(self.path)
+        if not os.path.exists(candidate):
+            self.path = "/index.html"
+
+    def do_GET(self) -> None:  # noqa: D401
+        self._spa_rewrite()
+        super().do_GET()
+
+    def do_HEAD(self) -> None:  # noqa: D401
+        self._spa_rewrite()
+        super().do_HEAD()
 
     def handle_one_request(self) -> None:  # noqa: D401
         try:

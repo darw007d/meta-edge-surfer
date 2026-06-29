@@ -117,6 +117,11 @@
     </section>
 
     <section id="view-settings" class="view">
+      <div id="join-block" class="sso-block hidden">
+        <p class="sso-label">You've been invited to Meta-Edge</p>
+        <p id="join-info" class="muted"></p>
+        <p class="sso-or">— sign in below to accept —</p>
+      </div>
       <div id="sso-status" class="hidden"></div>
       <div class="sso-block">
         <p class="sso-label">Sign in to Meta-Edge</p>
@@ -124,6 +129,34 @@
         <a class="btn-sso" href="/auth/google/start">Continue with Google</a>
         <a class="btn-sso" href="/auth/microsoft/start">Continue with Microsoft</a>
         <p class="sso-or">— or paste a token manually —</p>
+      </div>
+      <div id="admin-invite" class="sso-block hidden">
+        <p class="sso-label">Invite a member</p>
+        <form id="invite-form">
+          <label>
+            Email
+            <input id="inv-email" type="email" required autocomplete="off"
+                   placeholder="person@org.com" />
+          </label>
+          <label>
+            Cells <span class="muted">(comma-separated; must be cells you hold)</span>
+            <input id="inv-cells" type="text" autocomplete="off" placeholder="cellA, cellB" />
+          </label>
+          <label>
+            Role
+            <select id="inv-role">
+              <option value="member">member</option>
+              <option value="admin">admin</option>
+            </select>
+          </label>
+          <button type="submit" class="btn-primary">Create invite</button>
+        </form>
+        <div id="inv-result" class="muted"></div>
+        <label id="inv-link-wrap" class="hidden">
+          Invite link <span class="muted">(single-use, ~24h)</span>
+          <input id="inv-link" type="text" readonly autocomplete="off" />
+        </label>
+        <button type="button" id="inv-copy" class="btn-secondary hidden">Copy link</button>
       </div>
       <form id="settings-form">
         <label>
