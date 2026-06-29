@@ -18,11 +18,15 @@ const DEFAULT_BASE = location.protocol === "https:"
 const COMMANDER = "commander";
 const KIND_LABELS = ["fyi", "answer", "question", "status", "unblock"];
 
-// The node this session acts as. When signed in via Meta-Edge SSO it is the
-// logged-in member's own canonical node (state.ssoNode, e.g. "claire-mbp#0001");
-// otherwise (manual shared/root token in Settings) it degrades to the legacy
-// "commander" literal so the commander's shared-token use stays byte-identical.
-function selfNode() { return state.ssoNode || COMMANDER; }
+// The node this session acts as. When signed in via Meta-Edge SSO it is STRICTLY
+// the logged-in member's own canonical node (state.ssoNode, e.g. "claire-mbp#0001")
+// and NEVER the "commander" literal — an under-provisioned member (issuer /auth/me
+// returned no node) gets an empty node, surfaced as a clear "not provisioned" error
+// before any send (the gateway also fail-closes: from_node="" != auth.node -> 403),
+// rather than silently impersonating the commander. Only the legacy manual/shared
+// or root-token path (no SSO session) degrades to "commander" so the commander's
+// shared-token use stays byte-identical.
+function selfNode() { return ssoActive ? (state.ssoNode || "") : (state.ssoNode || COMMANDER); }
 
 // ---------- state ----------
 const state = {
@@ -317,6 +321,10 @@ function renderAutomations(rootList, events) {
 }
 
 async function refreshInbox() {
+  if (ssoActive && !selfNode()) {
+    setStatus("account not provisioned — contact the operator", "err");
+    return;
+  }
   try {
     setStatus("loading…");
     const { messages } = await apiInbox(50);
@@ -578,6 +586,13 @@ async function handleSend(ev) {
     ? ccField.value.split(",").map(s => s.trim()).filter(Boolean)
     : [];
   if (!content) return;
+  if (!selfNode()) {
+    // SSO session with no provisioned node: surface a clear message instead of
+    // firing a doomed (and confusing) request that the gateway would 403.
+    $("#send-result").textContent =
+      "✗ your account isn't provisioned with a node yet — contact the operator";
+    return;
+  }
   const btn = $("#send-btn");
   btn.disabled = true;
   $("#send-result").textContent = "sending…";
