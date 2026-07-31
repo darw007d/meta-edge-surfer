@@ -992,21 +992,69 @@ window.addEventListener("DOMContentLoaded", async () => {
 function renderReadQueue(items) {
   const ul = $("#read-list");
   if (!ul) return;
-  ul.innerHTML = "";
+  ul.replaceChildren();
   if (!items.length) {
-    ul.innerHTML = '<li class="muted">Nothing queued — lab is caught up.</li>';
+    const li = document.createElement("li");
+    li.className = "muted";
+    li.textContent = "Nothing queued — lab is caught up.";
+    ul.appendChild(li);
     return;
   }
+  // >>> BUILT WITH DOM APIs, NEVER innerHTML. <<< `title`, `note` and `url` are
+  // caller-supplied. Today the queue is PER-CELL so this would be self-XSS — but
+  // card #198 explicitly plans the fractal case where an ORCHESTRATOR QUEUES INTO A
+  // CELL IT OWNS, and at that point one cell's text renders in another's browser.
+  // Writing it with innerHTML would be building the cross-cell vulnerability in
+  // advance, on a roadmap we have already written down.
   items.forEach((it) => {
     const li = document.createElement("li");
-    // A paste and a link are different things to hand over; show which, and how big,
-    // so it is obvious what lab is about to spend context on.
-    const what = it.url
-      ? `<a href="${it.url}" target="_blank" rel="noreferrer">${it.title || it.url}</a>`
-      : `<strong>${it.title || "(pasted)"}</strong> <span class="muted">${it.chars} chars pasted</span>`;
-    const note = it.note ? ` <span class="muted">— ${it.note}</span>` : "";
-    li.innerHTML = `<div>${what}${note}</div>` +
-                   `<div class="muted">#${it.id} · ${fmtTime(it.added_at)} · ${it.status}</div>`;
+    const outer = document.createElement("div");
+
+    if (it.url) {
+      const a = document.createElement("a");
+      // Scheme allowlist: a `javascript:` url in the queue is exploitable TODAY,
+      // and a url is exactly the kind of thing that gets copied from elsewhere.
+      let safe = "";
+      try {
+        const u = new URL(it.url);
+        if (u.protocol === "http:" || u.protocol === "https:") safe = u.href;
+      } catch (_) { /* unparseable -> not a link */ }
+      if (safe) {
+        a.href = safe;
+        a.target = "_blank";
+        a.rel = "noreferrer noopener";
+        a.textContent = it.title || it.url;
+        outer.appendChild(a);
+      } else {
+        // Render it as INERT TEXT rather than dropping it: the commander must see
+        // what he queued, and a silently-missing row is its own defect.
+        const bad = document.createElement("span");
+        bad.textContent = (it.title || it.url) + " (unsupported link scheme)";
+        outer.appendChild(bad);
+      }
+    } else {
+      const strong = document.createElement("strong");
+      strong.textContent = it.title || "(pasted)";
+      outer.appendChild(strong);
+      const chars = document.createElement("span");
+      chars.className = "muted";
+      chars.textContent = ` ${it.chars} chars pasted`;
+      outer.appendChild(chars);
+    }
+
+    if (it.note) {
+      const n = document.createElement("span");
+      n.className = "muted";
+      n.textContent = ` — ${it.note}`;
+      outer.appendChild(n);
+    }
+
+    const meta = document.createElement("div");
+    meta.className = "muted";
+    meta.textContent = `#${it.id} · ${fmtTime(it.added_at)} · ${it.status}`;
+
+    li.appendChild(outer);
+    li.appendChild(meta);
     ul.appendChild(li);
   });
 }
@@ -1019,7 +1067,13 @@ async function loadReadQueue() {
   } catch (e) {
     // LOUD, never a silent empty list: an unreachable queue and an empty queue must
     // not look the same.
-    $("#read-list").innerHTML = `<li class="muted">could not load queue: ${e.message}</li>`;
+    // textContent, not innerHTML: an error string must not be able to inject markup.
+    const ul = $("#read-list");
+    ul.replaceChildren();
+    const li = document.createElement("li");
+    li.className = "muted";
+    li.textContent = "could not load queue: " + e.message;
+    ul.appendChild(li);
   }
 }
 
