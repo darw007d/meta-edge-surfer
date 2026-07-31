@@ -342,6 +342,7 @@ function showView(name) {
   if (name === "highlights") refreshHighlights();
   if (name === "automations") refreshAutomations();
   if (name === "services") { refreshServices(); refreshLanes(); }
+  if (name === "read") loadReadQueue();
   if (name === "settings") populateSettings();
 }
 
@@ -929,6 +930,8 @@ function startPollLoop() {
 window.addEventListener("DOMContentLoaded", async () => {
   $$(".tab").forEach(t => t.addEventListener("click", () => showView(t.dataset.view)));
   $("#refresh-inbox").addEventListener("click", refreshInbox);
+  $("#read-send")?.addEventListener("click", sendToRead);
+  $("#read-refresh")?.addEventListener("click", loadReadQueue);
   $("#refresh-highlights").addEventListener("click", refreshHighlights);
   $("#refresh-services").addEventListener("click", refreshServices);
   $("#new-lane-btn").addEventListener("click", () => $("#new-lane-form").classList.toggle("hidden"));
@@ -975,3 +978,72 @@ window.addEventListener("DOMContentLoaded", async () => {
     navigator.serviceWorker.register("sw.js").catch(() => { /* HTTPS-only on some browsers */ });
   }
 });
+
+// ---------- READING QUEUE (card #198) ----------
+// The commander curates, lab reads. An item is EITHER a url (public, lab fetches it)
+// or PASTED TEXT — and the text branch is the paywall answer: he holds the browser
+// session, so paid content arrives as text and no publisher credential ever enters
+// the mesh. Hours went into fetching a paid article with his own cookies (measured
+// inert) before that became obvious.
+//
+// The queue is PER-CELL server-side: `owner` comes from the bearer token, never from
+// anything this page sends. There is deliberately no owner field to fill in.
+
+function renderReadQueue(items) {
+  const ul = $("#read-list");
+  if (!ul) return;
+  ul.innerHTML = "";
+  if (!items.length) {
+    ul.innerHTML = '<li class="muted">Nothing queued — lab is caught up.</li>';
+    return;
+  }
+  items.forEach((it) => {
+    const li = document.createElement("li");
+    // A paste and a link are different things to hand over; show which, and how big,
+    // so it is obvious what lab is about to spend context on.
+    const what = it.url
+      ? `<a href="${it.url}" target="_blank" rel="noreferrer">${it.title || it.url}</a>`
+      : `<strong>${it.title || "(pasted)"}</strong> <span class="muted">${it.chars} chars pasted</span>`;
+    const note = it.note ? ` <span class="muted">— ${it.note}</span>` : "";
+    li.innerHTML = `<div>${what}${note}</div>` +
+                   `<div class="muted">#${it.id} · ${fmtTime(it.added_at)} · ${it.status}</div>`;
+    ul.appendChild(li);
+  });
+}
+
+async function loadReadQueue() {
+  try {
+    const data = await api("/read?status=queued");
+    renderReadQueue(data.items || []);
+    $("#read-status").textContent = `${(data.items || []).length} waiting · queue of ${data.owner}`;
+  } catch (e) {
+    // LOUD, never a silent empty list: an unreachable queue and an empty queue must
+    // not look the same.
+    $("#read-list").innerHTML = `<li class="muted">could not load queue: ${e.message}</li>`;
+  }
+}
+
+async function sendToRead() {
+  const url = $("#read-url").value.trim();
+  const text = $("#read-text").value.trim();
+  if (!url && !text) { $("#read-status").textContent = "give a URL or paste the text"; return; }
+  const btn = $("#read-send");
+  btn.disabled = true;
+  $("#read-status").textContent = "sending…";
+  try {
+    const body = JSON.stringify({ url, text, title: $("#read-title").value.trim(),
+                                  note: $("#read-note").value.trim() });
+    const res = await api("/read", { method: "POST", body });
+    // Clear only on CONFIRMED success — losing a long paste to a failed send is the
+    // one unacceptable outcome for a thing whose job is "don't lose what I gave you".
+    $("#read-url").value = ""; $("#read-text").value = "";
+    $("#read-title").value = ""; $("#read-note").value = "";
+    $("#read-status").textContent = res.requeued
+      ? `re-queued #${res.id}` : `queued #${res.id} (${res.kind || "url"})`;
+    loadReadQueue();
+  } catch (e) {
+    $("#read-status").textContent = "failed: " + e.message + " — your text is still here";
+  } finally {
+    btn.disabled = false;
+  }
+}

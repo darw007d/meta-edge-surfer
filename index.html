@@ -25,6 +25,7 @@
     <button class="tab" data-view="highlights" role="tab">48h</button>
     <button class="tab" data-view="automations" role="tab">Automations</button>
     <button class="tab" data-view="services" role="tab">Services</button>
+    <button class="tab" data-view="read" role="tab">Read</button>
     <button class="tab" data-view="settings" role="tab">⚙︎</button>
   </nav>
 
@@ -114,6 +115,32 @@
         <button type="submit" class="btn-primary">Launch</button>
       </form>
       <p class="note">A lane mints N provider workers that pull from the gateway task-queue. Delete stops all of a lane's workers.</p>
+    </section>
+
+    <!-- READING QUEUE (card #198) — the commander hands lab an article.
+         A URL for anything public; PASTED TEXT for anything paywalled, because he
+         holds the browser session and no publisher credential should ever enter the
+         mesh. -->
+    <section id="view-read" class="view">
+      <div class="row">
+        <input id="read-url" type="url" placeholder="Paste a URL (public articles)" />
+      </div>
+      <div class="row">
+        <input id="read-title" type="text" placeholder="Title (optional — useful for pastes)" />
+      </div>
+      <div class="row">
+        <textarea id="read-text" rows="8"
+          placeholder="…or paste the article text here (reader-mode copy or WYSIWYG). Use this for anything behind a paywall — you're logged in, lab isn't."></textarea>
+      </div>
+      <div class="row">
+        <input id="read-note" type="text" placeholder="Why you flagged it (optional)" />
+      </div>
+      <div class="row">
+        <button id="read-send" class="btn-primary">Send to lab</button>
+        <button id="read-refresh" class="btn-secondary">⟳ Queue</button>
+        <span id="read-status" class="muted"></span>
+      </div>
+      <ul id="read-list" class="msg-list"></ul>
     </section>
 
     <section id="view-settings" class="view">
